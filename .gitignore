@@ -1,0 +1,22 @@
+# Binaries and executables
+*.exe
+*.o
+*.obj
+*.out
+*.app
+
+# Build directories
+build/
+bin/
+out/
+
+# IDE files
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Temporary files
+*.log
+*.tmp
+test_out.txt

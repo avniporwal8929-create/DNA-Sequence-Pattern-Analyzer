@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Automata-Based DNA Sequence Pattern Analyzer & Mutation Detection System</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="brand-badge">THEORY OF COMPUTATION LAB</span>
+        <h2 class="brand-title">GENOME·AUTOMATA</h2>
+        <p class="brand-subtitle">DNA Pattern Analyzer &amp; Mutation Detector</p>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Core Modules</div>
+        <a class="nav-item active" data-tab="tab-dashboard" data-title="Overview Dashboard" data-desc="Real-time session analytics and laboratory activity stream">
+          <span class="nav-item-icon">01</span> Overview Dashboard
+        </a>
+        <a class="nav-item" data-tab="tab-validator" data-title="DNA Sequence Validator" data-desc="Validate nucleotides over formal alphabet Σ = {A, T, G, C}">
+          <span class="nav-item-icon">02</span> Sequence Validator
+        </a>
+        <a class="nav-item" data-tab="tab-pattern" data-title="Automata Pattern Detector" data-desc="Overlapping substring recognition via NFA-to-DFA construction">
+          <span class="nav-item-icon">03</span> Pattern Detection
+        </a>
+        <a class="nav-item" data-tab="tab-automata" data-title="Regular Expression &amp; Automata" data-desc="Thompson's Construction NFA &amp; Subset Construction DFA">
+          <span class="nav-item-icon">04</span> Regex &amp; NFA / DFA Lab
+        </a>
+        <a class="nav-item" data-tab="tab-simulator" data-title="Interactive DFA Simulator" data-desc="Step-by-step state machine execution on DNA sequences">
+          <span class="nav-item-icon">05</span> DFA Simulator
+        </a>
+        <a class="nav-item" data-tab="tab-comparator" data-title="Sequence Comparator &amp; Mutations" data-desc="Pairwise global alignment and mutation classification">
+          <span class="nav-item-icon">06</span> Mutation Detector
+        </a>
+        
+        <div class="nav-section-label">Academic Resources</div>
+        <a class="nav-item" data-tab="tab-theory" data-title="Theory &amp; Viva Voce Guide" data-desc="Fundamental concepts in formal languages and automata theory">
+          <span class="nav-item-icon">07</span> Theory &amp; Viva Guide
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="engine-status">
+          <div class="status-dot" id="engine-status-dot"></div>
+          <span id="engine-status-text">Checking C++ Core...</span>
+        </div>
+        <p style="margin-top:4px; font-size:10px; color:#556B5F;">C++17 Engine • CMake Architecture</p>
+      </div>
+    </aside>
+
+    <!-- MAIN WRAPPER -->
+    <div class="main-wrapper">
+      
+      <!-- TOP NAVIGATION BAR -->
+      <header class="topbar">
+        <div class="topbar-header">
+          <h1 id="topbar-title">Overview Dashboard</h1>
+          <p id="topbar-desc">Real-time session analytics and laboratory activity stream</p>
+        </div>
+
+        <div class="topbar-controls">
+          <div class="preset-selector">
+            <label for="preset-select" style="font-size:12px; font-weight:600; color:var(--color-text-muted);">Quick Presets:</label>
+            <select id="preset-select" class="select-input">
+              <option value="">Load Sample Sequence...</option>
+              <option value="insulin">Insulin Start Codon (ATG)</option>
+              <option value="overlapping">Overlapping Match (ATAT in ATATAT)</option>
+              <option value="tata">TATA Box Promoter (TATAAA)</option>
+              <option value="ecori">EcoRI Restriction Site (GAATTC)</option>
+              <option value="sickle">Sickle-Cell Point Mutation (A &rarr; T)</option>
+            </select>
+          </div>
+        </div>
+      </header>
+
+      <!-- CONTENT CANVAS -->
+      <main class="content-canvas">
+
+        <!-- ==============================================================
+             MODULE 1: DASHBOARD
+             ============================================================== -->
+        <section id="tab-dashboard" class="tab-panel active">
+          <div class="grid-4" style="margin-bottom:24px;">
+            <div class="metric-card">
+              <div class="metric-label">Sequences Analyzed</div>
+              <div class="metric-value" id="stat-sequences">0</div>
+              <div class="metric-sub">Session cumulative count</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Patterns Detected</div>
+              <div class="metric-value" id="stat-patterns">0</div>
+              <div class="metric-sub">Total matches identified</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Automata Generated</div>
+              <div class="metric-value" id="stat-automata">0</div>
+              <div class="metric-sub">NFAs &amp; DFAs compiled</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Mutations Compared</div>
+              <div class="metric-value" id="stat-mutations">0</div>
+              <div class="metric-sub">Sequence alignments</div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Project Architecture &amp; TOC Foundations</span>
+                <span class="card-badge">C++17 / Crow REST</span>
+              </div>
+              <p style="font-size:13px; color:var(--color-text-muted); margin-bottom:14px;">
+                This system bridges theoretical computer science with computational biology. 
+                All algorithms run in compiled native C++ with mathematical guarantees:
+              </p>
+              <ul style="font-size:13px; color:#2F3932; padding-left:18px; line-height:1.7;">
+                <li><strong>Formal Alphabet:</strong> Strict validation over &Sigma; = {A, T, G, C}.</li>
+                <li><strong>Thompson's Construction:</strong> Inductive generation of NFAs from regular expressions.</li>
+                <li><strong>Subset Construction:</strong> Powersett-based determinization with &epsilon;-closure &amp; Move functions.</li>
+                <li><strong>Pattern Matching Automata:</strong> Knuth-Morris-Pratt style prefix DFAs for exact &amp; overlapping substring search.</li>
+                <li><strong>Pairwise Sequence Alignment:</strong> Dynamic programming global alignment for mutation classification.</li>
+              </ul>
+              <div style="margin-top:18px; display:flex; gap:8px;">
+                <button class="btn btn-primary btn-sm" onclick="App.switchTab('tab-pattern')">Try Pattern Detection</button>
+                <button class="btn btn-outline btn-sm" onclick="App.switchTab('tab-automata')">Open Regex Lab</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Session Activity History</span>
+                <button class="btn btn-outline btn-sm" onclick="Dashboard.refreshStats()">Refresh</button>
+              </div>
+              <div class="data-table-wrapper" style="max-height:220px;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Time</th>
+                      <th>Operation</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashboard-history-body">
+                    <tr><td colspan="3" style="text-align:center; color:var(--color-text-muted);">No activity recorded yet in this session. Start by analyzing a sequence!</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             MODULE 2: DNA SEQUENCE VALIDATOR
+             ============================================================== -->
+        <section id="tab-validator" class="tab-panel">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Formal DNA Sequence Validator</span>
+              <span class="card-badge">&Sigma; = {A, T, G, C}</span>
+            </div>
+            <p class="section-desc">
+              Verifies if a candidate string belongs to the formal language &Sigma;* over the DNA nucleotide alphabet.
+              Lowercase characters are automatically sanitized to uppercase; invalid characters are rejected with exact position reporting.
+            </p>
+
+            <div class="form-group">
+              <label class="form-label" for="validator-seq-input">Enter Candidate DNA Sequence:</label>
+              <textarea id="validator-seq-input" class="textarea-input" placeholder="e.g. ATGCGATGATG or paste FASTA content..."></textarea>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                <div class="nuc-quick-bar">
+                  <span style="font-size:12px; color:var(--color-text-muted); align-self:center;">Insert:</span>
+                  <button type="button" class="nuc-btn nuc-val-insert" data-nuc="A">A</button>
+                  <button type="button" class="nuc-btn nuc-val-insert" data-nuc="T">T</button>
+                  <button type="button" class="nuc-btn nuc-val-insert" data-nuc="G">G</button>
+                  <button type="button" class="nuc-btn nuc-val-insert" data-nuc="C">C</button>
+                </div>
+                <div style="font-size:12px; font-family:var(--font-mono); color:var(--color-text-muted);">
+                  Length: <span id="validator-live-len" style="font-weight:700; color:var(--color-text-main);">0</span> bp
+                </div>
+              </div>
+            </div>
+
+            <div class="btn-group">
+              <button class="btn btn-primary" id="validator-btn">Validate Sequence</button>
+              <button class="btn btn-outline" id="validator-clear-btn">Clear</button>
+            </div>
+
+            <div id="validator-result-box" style="display:none; margin-top:20px;"></div>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             MODULE 3: PATTERN DETECTION
+             ============================================================== -->
+        <section id="tab-pattern" class="tab-panel">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Automata-Based Pattern Detection Engine</span>
+              <span class="card-badge">NFA &rarr; DFA &Sigma;*P Substring Search</span>
+            </div>
+            <p class="section-desc">
+              Constructs an NFA with self-looping start state &Sigma;* to allow matching at arbitrary offsets, converts it to a DFA via Subset Construction, and runs the automaton across the sequence. Handles overlapping occurrences correctly.
+            </p>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="pattern-seq-input">DNA Target Sequence:</label>
+                <textarea id="pattern-seq-input" class="textarea-input" placeholder="e.g. ATGCGATGATG">ATGCGATGATG</textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="pattern-target-input">Target Pattern to Detect:</label>
+                <input type="text" id="pattern-target-input" class="input-text" placeholder="e.g. ATG" value="ATG">
+                <div class="nuc-quick-bar">
+                  <span style="font-size:12px; color:var(--color-text-muted); align-self:center;">Insert:</span>
+                  <button type="button" class="nuc-btn nuc-pat-insert" data-nuc="A">A</button>
+                  <button type="button" class="nuc-btn nuc-pat-insert" data-nuc="T">T</button>
+                  <button type="button" class="nuc-btn nuc-pat-insert" data-nuc="G">G</button>
+                  <button type="button" class="nuc-btn nuc-pat-insert" data-nuc="C">C</button>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" id="pattern-search-btn">Execute Automata Search</button>
+          </div>
+
+          <!-- RESULTS CARD -->
+          <div class="card" id="pattern-results-card" style="display:none;">
+            <div class="card-header">
+              <span class="card-title">Pattern Detection Analysis</span>
+              <span class="card-badge">1-Based Indexing</span>
+            </div>
+
+            <div class="grid-3" style="margin-bottom:20px;">
+              <div class="metric-card">
+                <div class="metric-label">Pattern Found</div>
+                <div class="metric-value" id="pat-res-found">-</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Total Occurrences</div>
+                <div class="metric-value" id="pat-res-count">0</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Starting Positions</div>
+                <div class="metric-value" id="pat-res-positions" style="font-size:20px; word-break:break-word;">-</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Sequence with Highlighted Matches:</label>
+              <div class="sequence-view-box" id="pattern-highlighted-view"></div>
+            </div>
+
+            <div class="grid-2">
+              <div>
+                <h4 style="font-size:13px; font-weight:700; margin-bottom:8px;">Match Occurrences Breakdown</h4>
+                <div class="data-table-wrapper">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Start (1-based)</th>
+                        <th>End (1-based)</th>
+                        <th>Subsequence</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pattern-occurrences-body"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h4 style="font-size:13px; font-weight:700; margin-bottom:8px;">Matcher Automaton Diagram</h4>
+                <div class="automata-viz-container" id="pattern-automata-viz" style="height:260px;"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             MODULE 4: REGULAR EXPRESSION & AUTOMATA LAB
+             ============================================================== -->
+        <section id="tab-automata" class="tab-panel">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Regular Expression Compiler &amp; Subset Construction</span>
+              <span class="card-badge">Thompson Construction &bull; Rabin-Scott DFA</span>
+            </div>
+            <p class="section-desc">
+              Parses regular expressions over DNA alphabet {A, T, G, C}. Supports Concatenation, Union (<code>|</code>), Kleene Star (<code>*</code>), and Parentheses (<code>()</code>). 
+              Converts infix regex to postfix via Shunting-Yard, generates Thompson NFA with &epsilon;-transitions, and computes equivalent DFA via Subset Construction.
+            </p>
+
+            <div class="form-group">
+              <label class="form-label" for="regex-input">Enter Regular Expression:</label>
+              <div style="display:flex; gap:10px;">
+                <input type="text" id="regex-input" class="input-text" placeholder="e.g. (A|T)G or AT* or (A|T)*(G|C)" value="(A|T)G" style="flex:1;">
+                <button class="btn btn-primary" id="regex-compile-btn">Compile to Automata</button>
+              </div>
+              <p class="form-help">Supported syntax: Concatenation (implicit), Union <code>|</code>, Kleene Star <code>*</code>, Grouping <code>( )</code></p>
+            </div>
+
+            <div id="regex-error-box" style="display:none;"></div>
+          </div>
+
+          <div id="regex-results-container" style="display:none;">
+            <!-- Regex Preprocessing Info -->
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">Syntax &amp; Parsing Representation</span>
+                <span class="card-badge">Shunting-Yard Infix &rarr; Postfix</span>
+              </div>
+              <div class="grid-3">
+                <div>
+                  <div class="metric-label">Original Infix</div>
+                  <div class="mono-text" id="regex-meta-original" style="font-size:15px; font-weight:700; margin-top:4px;">-</div>
+                </div>
+                <div>
+                  <div class="metric-label">Explicit Concatenation</div>
+                  <div class="mono-text" id="regex-meta-explicit" style="font-size:15px; font-weight:700; margin-top:4px; color:#1D6FB8;">-</div>
+                </div>
+                <div>
+                  <div class="metric-label">Postfix (RPN)</div>
+                  <div class="mono-text" id="regex-meta-postfix" style="font-size:15px; font-weight:700; margin-top:4px; color:#1E7E34;">-</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- NFA & DFA Visualizations Side by Side -->
+            <div class="grid-2">
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title">1. Thompson NFA</span>
+                  <span class="card-badge">&epsilon;-Transitions</span>
+                </div>
+                <div class="automata-viz-container" id="regex-nfa-viz"></div>
+                <div style="margin-top:14px;">
+                  <h4 style="font-size:13px; font-weight:700; margin-bottom:8px;">NFA Transition Table &delta;</h4>
+                  <div class="data-table-wrapper" style="max-height:160px;">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th>State</th>
+                          <th>A</th>
+                          <th>T</th>
+                          <th>G</th>
+                          <th>C</th>
+                          <th>&epsilon;</th>
+                        </tr>
+                      </thead>
+                      <tbody id="nfa-table-body"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title">2. Equivalent DFA (Deterministic)</span>
+                  <span class="card-badge">Subset Construction</span>
+                </div>
+                <div class="automata-viz-container" id="regex-dfa-viz"></div>
+                <div style="margin-top:14px;">
+                  <h4 style="font-size:13px; font-weight:700; margin-bottom:8px;">DFA Transition Table &delta;<sub>DFA</sub></h4>
+                  <div class="data-table-wrapper" style="max-height:160px;">
+                    <table class="data-table">
+                      <thead>
+                        <tr>
+                          <th>DFA State</th>
+                          <th>NFA Subset</th>
+                          <th>A</th>
+                          <th>T</th>
+                          <th>G</th>
+                          <th>C</th>
+                        </tr>
+                      </thead>
+                      <tbody id="conversion-table-body"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP-BY-STEP SUBSET CONSTRUCTION INSPECTOR -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <span class="card-title">Step-by-Step Subset Construction Inspector</span>
+                  <p style="font-size:12px; color:var(--color-text-muted); margin-top:2px;">
+                    Detailed mathematical progression of &epsilon;-closure and Move functions for each DFA state
+                  </p>
+                </div>
+                <div class="btn-group">
+                  <span class="sim-step-badge" id="step-indicator">Step 1 of 1</span>
+                  <button class="btn btn-outline btn-sm" id="step-prev-btn">&larr; Previous</button>
+                  <button class="btn btn-outline btn-sm" id="step-next-btn">Next &rarr;</button>
+                </div>
+              </div>
+
+              <div id="step-details-card" style="padding:10px 0;"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             MODULE 5: DFA SIMULATOR
+             ============================================================== -->
+        <section id="tab-simulator" class="tab-panel">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Interactive DFA Stepping Simulator</span>
+              <span class="card-badge" id="sim-automaton-info">Loaded DFA: (A|T)G</span>
+            </div>
+            <p class="section-desc">
+              Execute DFA transitions symbol-by-symbol on a candidate DNA sequence. Follow the active state and active edge in real-time on the diagram.
+            </p>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="sim-regex-source-input">Automaton Source Pattern / Regex:</label>
+                <input type="text" id="sim-regex-source-input" class="input-text" value="(A|T)G">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="sim-seq-input">Input DNA Sequence to Simulate:</label>
+                <input type="text" id="sim-seq-input" class="input-text" placeholder="e.g. AG or TG or AT" value="AG">
+              </div>
+            </div>
+
+            <button class="btn btn-primary" id="sim-start-btn">Initialize Simulation</button>
+          </div>
+
+          <!-- SIMULATOR CONTROL BAR & DIAGRAM -->
+          <div class="card">
+            <div class="simulator-controls" id="sim-controls-panel" style="display:none;">
+              <div style="display:flex; align-items:center; gap:16px;">
+                <span class="sim-step-badge" id="sim-step-indicator">Step 0 of 0</span>
+                <div>
+                  <span style="font-size:11px; text-transform:uppercase; color:var(--color-text-muted); font-weight:700;">Current State:</span>
+                  <span class="mono-text" id="sim-curr-state-val" style="font-weight:700; color:var(--color-text-main); margin-left:4px;">-</span>
+                </div>
+                <div>
+                  <span style="font-size:11px; text-transform:uppercase; color:var(--color-text-muted); font-weight:700;">Symbol:</span>
+                  <span class="mono-text" id="sim-curr-sym-val" style="font-weight:700; color:#1D6FB8; margin-left:4px;">-</span>
+                </div>
+                <div>
+                  <span style="font-size:11px; text-transform:uppercase; color:var(--color-text-muted); font-weight:700;">Next State:</span>
+                  <span class="mono-text" id="sim-next-state-val" style="font-weight:700; color:var(--color-text-main); margin-left:4px;">-</span>
+                </div>
+              </div>
+
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span id="sim-status-badge" class="card-badge" style="font-size:12px; font-weight:700;">READY</span>
+                <button class="btn btn-outline btn-sm" id="sim-prev-btn">&larr; Back</button>
+                <button class="btn btn-outline btn-sm" id="sim-next-btn">Next Step &rarr;</button>
+                <button class="btn btn-outline btn-sm" id="sim-autorun-btn">Auto Run</button>
+                <button class="btn btn-outline btn-sm" id="sim-reset-btn">Reset</button>
+              </div>
+            </div>
+
+            <div class="automata-viz-container" id="sim-automata-viz"></div>
+
+            <div id="sim-trace-table-container" style="display:none; margin-top:20px;">
+              <h4 style="font-size:13px; font-weight:700; margin-bottom:8px;">Complete Transition Trace</h4>
+              <div class="data-table-wrapper" style="max-height:220px;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Step</th>
+                      <th>Current State</th>
+                      <th>Input Symbol</th>
+                      <th>Next State</th>
+                      <th>Transition Taken</th>
+                      <th>Acceptance</th>
+                    </tr>
+                  </thead>
+                  <tbody id="sim-trace-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             MODULE 6: MUTATION DETECTION & COMPARATOR
+             ============================================================== -->
+        <section id="tab-comparator" class="tab-panel">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">DNA Sequence Comparator &amp; Mutation Detector</span>
+              <span class="card-badge">Needleman-Wunsch Dynamic Programming</span>
+            </div>
+            <p class="section-desc">
+              Performs global pairwise sequence alignment to detect exact positions of nucleotide mutations: Single Nucleotide Substitutions (SNPs), Insertions, and Deletions.
+            </p>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label" for="comp-seq1-input">Sequence 1 (Reference DNA):</label>
+                <textarea id="comp-seq1-input" class="textarea-input" placeholder="e.g. ATGCGT">ATGCGT</textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="comp-seq2-input">Sequence 2 (Candidate DNA):</label>
+                <textarea id="comp-seq2-input" class="textarea-input" placeholder="e.g. ATGAGT">ATGAGT</textarea>
+              </div>
+            </div>
+
+            <div class="btn-group">
+              <button class="btn btn-primary" id="comparator-run-btn">Compare Sequences</button>
+              <button class="btn btn-outline" id="comparator-swap-btn">Swap Sequences</button>
+            </div>
+          </div>
+
+          <!-- COMPARATOR RESULTS -->
+          <div class="card" id="comparator-results-container" style="display:none;">
+            <div class="card-header">
+              <span class="card-title">Sequence Alignment &amp; Mutation Report</span>
+              <span class="card-badge" id="comp-res-diff-status">-</span>
+            </div>
+
+            <div class="grid-4" style="margin-bottom:20px;">
+              <div class="metric-card">
+                <div class="metric-label">Sequence Similarity</div>
+                <div class="metric-value" id="comp-res-similarity">0%</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Substitutions (SNPs)</div>
+                <div class="metric-value" id="comp-res-subs" style="color:#D9383A;">0</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Insertions</div>
+                <div class="metric-value" id="comp-res-ins" style="color:#1D6FB8;">0</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Deletions</div>
+                <div class="metric-value" id="comp-res-dels" style="color:#B38600;">0</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Global Pairwise Alignment:</label>
+              <div class="alignment-visual-banner" id="comp-alignment-banner"></div>
+            </div>
+
+            <h4 style="font-size:13px; font-weight:700; margin-bottom:8px;">Identified Mutation Points</h4>
+            <div class="data-table-wrapper" style="margin-bottom:20px;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Alignment Col</th>
+                    <th>Seq 1 Pos</th>
+                    <th>Seq 2 Pos</th>
+                    <th>Ref Nucleotide</th>
+                    <th>Mut Nucleotide</th>
+                    <th>Mutation Type</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody id="comp-diff-body"></tbody>
+              </table>
+            </div>
+
+            <div class="alert alert-info">
+              <div>
+                <strong>Academic Notice:</strong> This sequence comparison module is developed strictly for educational demonstration of dynamic programming and Theory of Computation principles. It does not provide medical or clinical diagnostics.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==============================================================
+             MODULE 7: THEORY & VIVA GUIDE
+             ============================================================== -->
+        <section id="tab-theory" class="tab-panel">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Theory of Computation Academic Reference &amp; Viva Voce Guide</span>
+              <span class="card-badge">Comprehensive Revision</span>
+            </div>
+            <p class="section-desc">
+              Conceptual fundamentals explained with bioinformatics examples, designed for second-year engineering students and academic evaluation.
+            </p>
+
+            <div class="theory-card">
+              <div class="theory-header">
+                <span>1. What is an Alphabet (&Sigma;) in Formal Language Theory?</span>
+                <span>&plus;</span>
+              </div>
+              <div class="theory-body">
+                An <strong>alphabet</strong> is a finite, non-empty set of symbols. In this project, the DNA alphabet is formally defined as:
+                <br><code>&Sigma; = {A, T, G, C}</code>
+                where each symbol denotes one of the four nitrogenous nucleotides (Adenine, Thymine, Guanine, Cytosine).
+              </div>
+            </div>
+
+            <div class="theory-card">
+              <div class="theory-header">
+                <span>2. What is a String and Formal Language?</span>
+                <span>&plus;</span>
+              </div>
+              <div class="theory-body">
+                A <strong>string</strong> (or word) is a finite sequence of symbols chosen from an alphabet &Sigma;. For example, <code>w = ATGCG</code> is a string of length |w| = 5 over &Sigma; = {A, T, G, C}.
+                <br>The set of all possible strings over &Sigma;, including the empty string &epsilon;, is denoted by the Kleene star closure <code>&Sigma;*</code>.
+                <br>A <strong>formal language</strong> L is any subset of &Sigma;* (i.e., L &sube; &Sigma;*). For example, the language of all DNA sequences starting with a start codon is L = { w &isin; &Sigma;* | w starts with ATG }.
+              </div>
+            </div>
+
+            <div class="theory-card">
+              <div class="theory-header">
+                <span>3. What is a Non-Deterministic Finite Automaton (NFA)?</span>
+                <span>&plus;</span>
+              </div>
+              <div class="theory-body">
+                An <strong>NFA</strong> is a 5-tuple <code>M = (Q, &Sigma;, &delta;, q0, F)</code>:
+                <ul style="padding-left:18px; margin-top:6px;">
+                  <li><code>Q</code>: Finite set of states.</li>
+                  <li><code>&Sigma;</code>: Alphabet of input symbols.</li>
+                  <li><code>&delta;</code>: Transition function mapping <code>Q &times; (&Sigma; &cup; {&epsilon;}) &rarr; 2^Q</code> (power set of states).</li>
+                  <li><code>q0 &isin; Q</code>: Initial start state.</li>
+                  <li><code>F &sube; Q</code>: Set of final or accepting states.</li>
+                </ul>
+                In an NFA, for a given state and input symbol, there may be zero, one, or multiple transitions, and transitions may occur without consuming input (&epsilon;-transitions).
+              </div>
+            </div>
+
+            <div class="theory-card">
+              <div class="theory-header">
+                <span>4. What is a Deterministic Finite Automaton (DFA)?</span>
+                <span>&plus;</span>
+              </div>
+              <div class="theory-body">
+                A <strong>DFA</strong> is also a 5-tuple <code>M = (Q, &Sigma;, &delta;, q0, F)</code>, but with two strict constraints:
+                <ul style="padding-left:18px; margin-top:6px;">
+                  <li>The transition function &delta; maps <code>Q &times; &Sigma; &rarr; Q</code>. For every state and input symbol, there is exactly one next state.</li>
+                  <li>No &epsilon;-transitions are permitted.</li>
+                </ul>
+                DFAs are deterministic and can be directly implemented in hardware and software for O(N) linear time pattern matching!
+              </div>
+            </div>
+
+            <div class="theory-card">
+              <div class="theory-header">
+                <span>5. What is &epsilon;-Closure and the Move Function?</span>
+                <span>&plus;</span>
+              </div>
+              <div class="theory-body">
+                <strong>&epsilon;-Closure:</strong> For a state <code>s</code>, <code>&epsilon;-closure(s)</code> is the set of all states reachable from <code>s</code> by following zero or more &epsilon;-transitions. For a set of states <code>T</code>:
+                <br><code>&epsilon;-closure(T) = &Union;_{s &isin; T} &epsilon;-closure(s)</code>.
+                <br><br>
+                <strong>Move Function:</strong> For a state set <code>T</code> and symbol <code>a &isin; &Sigma;</code>:
+                <br><code>Move(T, a) = &Union;_{s &isin; T} &delta;(s, a)</code>.
+              </div>
+            </div>
+
+            <div class="theory-card">
+              <div class="theory-header">
+                <span>6. How does the Subset Construction (Rabin-Scott) Algorithm work?</span>
+                <span>&plus;</span>
+              </div>
+              <div class="theory-body">
+                The Subset Construction algorithm converts an NFA into an equivalent DFA:
+                <ol style="padding-left:18px; margin-top:6px; line-height:1.7;">
+                  <li><strong>Initial DFA State:</strong> <code>S0 = &epsilon;-closure(q0)</code>. Add S0 to an unmarked queue.</li>
+                  <li><strong>Loop:</strong> While there are unmarked DFA states U:
+                    <br>&bull; For each nucleotide symbol <code>a &isin; {A, T, G, C}</code>:
+                    <br>&bull; Compute <code>V = &epsilon;-closure(Move(U, a))</code>.
+                    <br>&bull; If V is not in the set of DFA states and is non-empty, assign it a new DFA state ID and add V to the queue.
+                    <br>&bull; Add DFA transition: <code>&delta;_DFA(U, a) = V</code>.
+                  </li>
+                  <li><strong>Accepting States:</strong> Any DFA state containing at least one NFA final state is an accepting state of the DFA.</li>
+                </ol>
+              </div>
+            </div>
+
+            <div class="theory-card">
+              <div class="theory-header">
+                <span>7. How is Substring Pattern Search performed with Automata?</span>
+                <span>&plus;</span>
+              </div>
+              <div class="theory-body">
+                To find all occurrences of pattern P in sequence T:
+                An NFA is constructed recognizing language <code>&Sigma;* P</code>. The initial state has a self-loop on all DNA symbols {A, T, G, C}, allowing the search to begin at any nucleotide position.
+                Converting this NFA to a DFA creates a Knuth-Morris-Pratt style deterministic automaton. Streaming the sequence through the DFA detects every occurrence (including overlapping occurrences) immediately whenever an accepting state is entered!
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="js/api.js"></script>
+  <script src="js/visualization.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/validator.js"></script>
+  <script src="js/pattern.js"></script>
+  <script src="js/automata.js"></script>
+  <script src="js/simulator.js"></script>
+  <script src="js/comparator.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
