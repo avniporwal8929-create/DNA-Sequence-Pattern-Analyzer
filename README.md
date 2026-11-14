@@ -1,5 +1,7 @@
 # GENOME·AUTOMATA — DNA Sequence Pattern Analyzer & Mutation Detector
-### B.Tech Theory of Computation (TOC) Academic Application Project
+### Theory of Computation (TOC) Application Project
+<img width="959" height="506" alt="image" src="https://github.com/user-attachments/assets/be453577-df52-49b1-ad5f-63597a611f98" />
+
 
 A high-performance computational biology application implementing formal language and Theory of Computation (TOC) algorithms in **C++17**, paired with a professional bioinformatics web dashboard.
 
