@@ -22,9 +22,11 @@ using json = nlohmann::json;
 // Real Activity Tracker
 struct ActivityStats {
     int totalSequencesAnalyzed = 0;
+    int validSequencesCount = 0;
+    int invalidSequencesCount = 0;
     int totalPatternsDetected = 0;
     int totalAutomataGenerated = 0;
-    int totalMutationsCompared = 0;
+    int totalMutationsIdentified = 0;
     std::vector<json> activityHistory;
     std::mutex mtx;
 
@@ -50,9 +52,11 @@ struct ActivityStats {
         std::lock_guard<std::mutex> lock(mtx);
         json j;
         j["totalSequencesAnalyzed"] = totalSequencesAnalyzed;
+        j["validSequencesCount"] = validSequencesCount;
+        j["invalidSequencesCount"] = invalidSequencesCount;
         j["totalPatternsDetected"] = totalPatternsDetected;
         j["totalAutomataGenerated"] = totalAutomataGenerated;
-        j["totalMutationsCompared"] = totalMutationsCompared;
+        j["totalMutationsIdentified"] = totalMutationsIdentified;
         j["history"] = activityHistory;
         return j;
     }
@@ -83,8 +87,8 @@ int main(int argc, char* argv[]) {
         setCors(res);
         json j = {
             {"status", "ok"},
-            {"service", "Automata-Based DNA Sequence Pattern Analyzer"},
-            {"version", "1.0.0"},
+            {"service", "GENOME·AUTOMATA Engine"},
+            {"version", "1.1.0"},
             {"engine", "C++17 Theory of Computation Engine"}
         };
         res.set_content(j.dump(2), "application/json");
@@ -104,9 +108,13 @@ int main(int argc, char* argv[]) {
             std::string seq = body.value("sequence", "");
             ValidationResult v = DNAValidator::validate(seq);
 
+            gStats.totalSequencesAnalyzed++;
             if (v.isValid) {
-                gStats.totalSequencesAnalyzed++;
-                gStats.record("Sequence Validation", "Validated sequence of length " + std::to_string(v.length));
+                gStats.validSequencesCount++;
+                gStats.record("Sequence Validation", "Validated sequence length: " + std::to_string(v.length) + " bp (Valid)");
+            } else {
+                gStats.invalidSequencesCount++;
+                gStats.record("Sequence Validation", "Validation error: " + v.errorMessage);
             }
 
             res.set_content(v.toJson().dump(2), "application/json");
@@ -117,7 +125,7 @@ int main(int argc, char* argv[]) {
         }
     });
 
-    // 4. Pattern Detection: POST /api/pattern/detect
+    // 4. Pattern Detection (Single): POST /api/pattern/detect
     svr.Post("/api/pattern/detect", [](const httplib::Request& req, httplib::Response& res) {
         setCors(res);
         try {
@@ -128,9 +136,10 @@ int main(int argc, char* argv[]) {
             PatternDetectionResult result = PatternDetector::detect(seq, pat);
 
             if (result.success) {
+                gStats.totalSequencesAnalyzed++;
                 gStats.totalPatternsDetected += result.totalOccurrences;
                 gStats.totalAutomataGenerated += 2; // NFA and DFA created
-                gStats.record("Pattern Search", "Pattern '" + pat + "' searched in sequence. Found: " + std::to_string(result.totalOccurrences));
+                gStats.record("Pattern Search", "Pattern '" + pat + "' detected " + std::to_string(result.totalOccurrences) + " times.");
             }
 
             res.set_content(result.toJson().dump(2), "application/json");
@@ -141,7 +150,36 @@ int main(int argc, char* argv[]) {
         }
     });
 
-    // 5. Regular Expression Compilation: POST /api/regex/compile
+    // 5. Pattern Detection (Multiple): POST /api/pattern/detect-multi
+    svr.Post("/api/pattern/detect-multi", [](const httplib::Request& req, httplib::Response& res) {
+        setCors(res);
+        try {
+            json body = json::parse(req.body);
+            std::string seq = body.value("sequence", "");
+            std::vector<std::string> patterns;
+            if (body.contains("patterns") && body["patterns"].is_array()) {
+                for (const auto& item : body["patterns"]) {
+                    if (item.is_string()) patterns.push_back(item.get<std::string>());
+                }
+            }
+
+            MultiPatternResult multiRes = PatternDetector::detectMultiple(seq, patterns);
+            if (multiRes.success) {
+                gStats.totalSequencesAnalyzed++;
+                gStats.totalPatternsDetected += multiRes.totalOccurrencesCombined;
+                gStats.totalAutomataGenerated += static_cast<int>(patterns.size()) * 2;
+                gStats.record("Multi-Pattern Search", "Searched " + std::to_string(patterns.size()) + " patterns, found " + std::to_string(multiRes.totalOccurrencesCombined) + " total matches.");
+            }
+
+            res.set_content(multiRes.toJson().dump(2), "application/json");
+        } catch (const std::exception& e) {
+            json err = {{"success", false}, {"errorMessage", std::string("Multi-pattern detection failed: ") + e.what()}};
+            res.status = 400;
+            res.set_content(err.dump(2), "application/json");
+        }
+    });
+
+    // 6. Regular Expression Compilation: POST /api/regex/compile
     svr.Post("/api/regex/compile", [](const httplib::Request& req, httplib::Response& res) {
         setCors(res);
         try {
@@ -164,7 +202,7 @@ int main(int argc, char* argv[]) {
             SubsetConversionReport report = SubsetConstruction::convert(nfa);
 
             gStats.totalAutomataGenerated += 2;
-            gStats.record("Regex Compilation", "Compiled regex: " + regexStr);
+            gStats.record("Regex Compilation", "Compiled regex: " + regexStr + " into NFA and DFA.");
 
             json response;
             response["success"] = true;
@@ -183,13 +221,55 @@ int main(int argc, char* argv[]) {
         }
     });
 
-    // 6. NFA Generation: POST /api/automata/nfa
+    // 7. Test Candidate String Acceptance: POST /api/automata/test-string
+    svr.Post("/api/automata/test-string", [](const httplib::Request& req, httplib::Response& res) {
+        setCors(res);
+        try {
+            json body = json::parse(req.body);
+            std::string regexStr = body.value("regex", "");
+            std::string candidateStr = body.value("candidate", "");
+
+            ValidationResult candVal = DNAValidator::validate(candidateStr);
+            std::string sanitizedCand = candVal.isValid ? candVal.sanitizedSequence : "";
+
+            RegexParseResult parsed = RegexParser::parse(regexStr);
+            if (!parsed.isValid) {
+                res.status = 400;
+                res.set_content(json({{"success", false}, {"errorMessage", parsed.errorMessage}}).dump(2), "application/json");
+                return;
+            }
+
+            NFA nfa = ThompsonConstruction::buildFromPostfix(parsed.postfixRegex);
+            SubsetConversionReport report = SubsetConstruction::convert(nfa);
+            DFA dfa = report.dfa;
+
+            bool isAccepted = dfa.accepts(sanitizedCand);
+            auto trace = dfa.simulateTrace(sanitizedCand);
+
+            gStats.record("Automaton Acceptance Test", "Candidate '" + sanitizedCand + "' on regex '" + regexStr + "': " + (isAccepted ? "ACCEPTED" : "REJECTED"));
+
+            json resp = {
+                {"success", true},
+                {"regex", regexStr},
+                {"candidate", sanitizedCand},
+                {"isAccepted", isAccepted},
+                {"statusText", isAccepted ? "ACCEPTED" : "REJECTED"},
+                {"traceLength", trace.size()}
+            };
+            res.set_content(resp.dump(2), "application/json");
+        } catch (const std::exception& e) {
+            res.status = 400;
+            res.set_content(json({{"success", false}, {"errorMessage", e.what()}}).dump(2), "application/json");
+        }
+    });
+
+    // 8. NFA Generation: POST /api/automata/nfa
     svr.Post("/api/automata/nfa", [](const httplib::Request& req, httplib::Response& res) {
         setCors(res);
         try {
             json body = json::parse(req.body);
             std::string input = body.value("input", "");
-            std::string type = body.value("type", "regex"); // "regex" or "literal"
+            std::string type = body.value("type", "regex");
 
             NFA nfa;
             if (type == "literal") {
@@ -219,13 +299,13 @@ int main(int argc, char* argv[]) {
         }
     });
 
-    // 7. NFA to DFA Subset Conversion: POST /api/automata/convert
+    // 9. NFA to DFA Subset Conversion: POST /api/automata/convert
     svr.Post("/api/automata/convert", [](const httplib::Request& req, httplib::Response& res) {
         setCors(res);
         try {
             json body = json::parse(req.body);
             std::string input = body.value("input", "");
-            std::string type = body.value("type", "regex"); // "regex" or "literal"
+            std::string type = body.value("type", "regex");
 
             NFA nfa;
             if (type == "literal") {
@@ -261,7 +341,7 @@ int main(int argc, char* argv[]) {
         }
     });
 
-    // 8. DFA Simulation: POST /api/automata/simulate
+    // 10. DFA Simulation: POST /api/automata/simulate
     svr.Post("/api/automata/simulate", [](const httplib::Request& req, httplib::Response& res) {
         setCors(res);
         try {
@@ -314,11 +394,12 @@ int main(int argc, char* argv[]) {
                 traceJson.push_back(s);
             }
 
-            gStats.record("DFA Simulation", "Simulated sequence '" + sanitizedSeq + "' (Accepted: " + (isAccepted ? "Yes" : "No") + ")");
+            gStats.record("DFA Simulation", "Simulated sequence '" + sanitizedSeq + "' (Result: " + (isAccepted ? "ACCEPTED" : "REJECTED") + ")");
 
             json response;
             response["success"] = true;
             response["isAccepted"] = isAccepted;
+            response["resultStatus"] = isAccepted ? "ACCEPTED" : "REJECTED";
             response["inputSequence"] = sanitizedSeq;
             response["trace"] = traceJson;
             response["dfa"] = dfa.toJson();
@@ -331,7 +412,7 @@ int main(int argc, char* argv[]) {
         }
     });
 
-    // 9. Sequence Comparator: POST /api/mutation/compare
+    // 11. Sequence Comparator: POST /api/mutation/compare
     svr.Post("/api/mutation/compare", [](const httplib::Request& req, httplib::Response& res) {
         setCors(res);
         try {
@@ -342,10 +423,13 @@ int main(int argc, char* argv[]) {
             ComparisonResult result = SequenceComparator::compare(seq1, seq2);
 
             if (result.success) {
-                gStats.totalMutationsCompared++;
-                gStats.record("Mutation Comparison", "Compared sequences (" + std::to_string(result.totalSubstitutions) + " subs, " +
+                int totalMuts = result.totalSubstitutions + result.totalInsertions + result.totalDeletions;
+                gStats.totalMutationsIdentified += totalMuts;
+                gStats.totalSequencesAnalyzed += 2;
+                gStats.record("Mutation Comparison", "Aligned sequences: " + std::to_string(totalMuts) + " total mutations (" +
+                                                      std::to_string(result.totalSubstitutions) + " subs, " +
                                                       std::to_string(result.totalInsertions) + " ins, " +
-                                                      std::to_string(result.totalDeletions) + " del)");
+                                                      std::to_string(result.totalDeletions) + " del).");
             }
 
             res.set_content(result.toJson().dump(2), "application/json");
@@ -360,10 +444,10 @@ int main(int argc, char* argv[]) {
     svr.set_mount_point("/", "./frontend");
 
     std::cout << "========================================================\n";
-    std::cout << "  DNA PATTERN ANALYZER & MUTATION DETECTION BACKEND  \n";
-    std::cout << "  Language: C++17 | Framework: Modern REST API\n";
+    std::cout << "  GENOME·AUTOMATA - DNA PATTERN ANALYZER & MUTATION ENGINE\n";
+    std::cout << "  C++17 Engine | Theory of Computation Core Architecture\n";
     std::cout << "  Port: " << port << " | Status: RUNNING\n";
-    std::cout << "  Endpoint: http://localhost:" << port << "/\n";
+    std::cout << "  Access at: http://localhost:" << port << "/\n";
     std::cout << "========================================================\n";
 
     svr.listen("0.0.0.0", port);

@@ -7,6 +7,7 @@ nlohmann::json PatternMatchOccurrence::toJson() const {
     j["startIndex"] = startIndex;
     j["endIndex"] = endIndex;
     j["matchedText"] = matchedText;
+    j["patternTag"] = patternTag;
     return j;
 }
 
@@ -36,6 +37,28 @@ nlohmann::json PatternDetectionResult::toJson() const {
     j["matcherDFA"] = matcherDFA.toJson();
     j["conversionSteps"] = conversionReport.toJson()["steps"];
     j["conversionTable"] = conversionReport.conversionTable;
+
+    return j;
+}
+
+nlohmann::json MultiPatternResult::toJson() const {
+    nlohmann::json j;
+    j["success"] = success;
+    j["errorMessage"] = errorMessage;
+    j["dnaSequence"] = dnaSequence;
+    j["totalPatternsSearched"] = totalPatternsSearched;
+    j["totalOccurrencesCombined"] = totalOccurrencesCombined;
+
+    nlohmann::json arr = nlohmann::json::array();
+    for (const auto& pr : patternResults) {
+        arr.push_back(pr.toJson());
+    }
+    j["patternResults"] = arr;
+
+    std::vector<int> maskInts;
+    maskInts.reserve(combinedMatchMask.size());
+    for (bool b : combinedMatchMask) maskInts.push_back(b ? 1 : 0);
+    j["combinedMatchMask"] = maskInts;
 
     return j;
 }
@@ -74,7 +97,6 @@ PatternDetectionResult PatternDetector::detect(const std::string& dnaInput, cons
     }
 
     // 3. Build Substring Pattern-Matching NFA:
-    // State 0 loops on {A, T, G, C}, and transitions sequentially along pattern characters to final state
     result.matcherNFA = ThompsonConstruction::buildSubstringMatcher(result.pattern);
 
     // 4. Convert NFA to DFA via Subset Construction
@@ -99,7 +121,6 @@ PatternDetectionResult PatternDetector::detect(const std::string& dnaInput, cons
         // Check if the current DFA state is an accepting state
         if (result.matcherDFA.isAcceptState(currState)) {
             // Occurrence detected!
-            // i is 0-based index of the last character of the pattern
             int startIdx0 = static_cast<int>(i - patternLen + 1);
             int startIdx1 = startIdx0 + 1; // 1-based indexing
             int endIdx1 = static_cast<int>(i + 1);
@@ -111,6 +132,7 @@ PatternDetectionResult PatternDetector::detect(const std::string& dnaInput, cons
             occ.startIndex = startIdx1;
             occ.endIndex = endIdx1;
             occ.matchedText = result.dnaSequence.substr(startIdx0, patternLen);
+            occ.patternTag = result.pattern;
             result.occurrences.push_back(occ);
 
             // Mark characters in mask
@@ -127,4 +149,38 @@ PatternDetectionResult PatternDetector::detect(const std::string& dnaInput, cons
     result.success = true;
 
     return result;
+}
+
+MultiPatternResult PatternDetector::detectMultiple(const std::string& dnaInput, const std::vector<std::string>& patterns) {
+    MultiPatternResult multiRes;
+
+    ValidationResult dnaVal = DNAValidator::validate(dnaInput);
+    if (!dnaVal.isValid) {
+        multiRes.success = false;
+        multiRes.errorMessage = "DNA sequence validation failed: " + dnaVal.errorMessage;
+        return multiRes;
+    }
+
+    multiRes.dnaSequence = dnaVal.sanitizedSequence;
+    multiRes.combinedMatchMask.assign(multiRes.dnaSequence.size(), false);
+    multiRes.totalPatternsSearched = static_cast<int>(patterns.size());
+
+    int combinedCount = 0;
+    for (const auto& rawPat : patterns) {
+        if (rawPat.empty()) continue;
+        PatternDetectionResult singleRes = detect(multiRes.dnaSequence, rawPat);
+        if (singleRes.success) {
+            combinedCount += singleRes.totalOccurrences;
+            for (size_t k = 0; k < singleRes.matchMask.size(); ++k) {
+                if (singleRes.matchMask[k]) {
+                    multiRes.combinedMatchMask[k] = true;
+                }
+            }
+            multiRes.patternResults.push_back(singleRes);
+        }
+    }
+
+    multiRes.totalOccurrencesCombined = combinedCount;
+    multiRes.success = true;
+    return multiRes;
 }

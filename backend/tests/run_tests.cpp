@@ -144,6 +144,11 @@ void testPatternDetector() {
     // Pattern longer than sequence
     PatternDetectionResult r6 = PatternDetector::detect("ATG", "ATGCGATG");
     recordTest("Pattern longer than sequence handled", !r6.patternFound && r6.totalOccurrences == 0);
+
+    // Multi-pattern search
+    MultiPatternResult r7 = PatternDetector::detectMultiple("ATGCGATGATG", {"ATG", "CGA"});
+    recordTest("Multi-pattern detection succeeds", r7.success && r7.totalOccurrencesCombined == 4);
+    recordTest("Multi-pattern searched 2 patterns", r7.totalPatternsSearched == 2);
 }
 
 void testSequenceComparator() {

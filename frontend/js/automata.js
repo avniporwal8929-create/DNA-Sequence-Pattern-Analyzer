@@ -7,6 +7,7 @@ const AutomataModule = {
   dfaVisualizer: null,
   conversionSteps: [],
   currentStepIndex: 0,
+  currentCompiledRegex: '',
 
   init() {
     this.nfaVisualizer = new AutomataVisualizer('regex-nfa-viz');
@@ -15,6 +16,11 @@ const AutomataModule = {
     const compileBtn = document.getElementById('regex-compile-btn');
     if (compileBtn) {
       compileBtn.addEventListener('click', () => this.runRegexCompilation());
+    }
+
+    const testBtn = document.getElementById('regex-test-string-btn');
+    if (testBtn) {
+      testBtn.addEventListener('click', () => this.testCandidateString());
     }
 
     // Step-by-step subset inspection controls
@@ -51,6 +57,7 @@ const AutomataModule = {
       return;
     }
 
+    this.currentCompiledRegex = regexStr;
     if (errBox) errBox.style.display = 'none';
 
     const res = await API.compileRegex(regexStr);
@@ -96,6 +103,47 @@ const AutomataModule = {
 
     // Setup Simulator with this DFA
     SimulatorModule.loadDFA(res.dfa, regexStr);
+
+    Dashboard.refreshStats();
+  },
+
+  async testCandidateString() {
+    const inputCandidate = document.getElementById('regex-test-candidate-input');
+    const resBox = document.getElementById('regex-test-result-box');
+    const regexStr = this.currentCompiledRegex || document.getElementById('regex-input').value.trim();
+    const candidate = inputCandidate ? inputCandidate.value.trim() : '';
+
+    if (!regexStr) {
+      App.showToast('Please compile a regular expression first.');
+      return;
+    }
+
+    const res = await API.testCandidateString(regexStr, candidate);
+    if (!resBox) return;
+
+    resBox.style.display = 'block';
+    if (res.success) {
+      if (res.isAccepted) {
+        resBox.className = 'alert alert-success';
+        resBox.innerHTML = `
+          <div>
+            <strong style="font-size:14px; color:#1E7E34;">STRING ACCEPTED</strong>
+            <p style="margin-top:2px;">Sequence <code>${candidate || 'ε'}</code> successfully reaches an accepting state of the DFA.</p>
+          </div>
+        `;
+      } else {
+        resBox.className = 'alert alert-error';
+        resBox.innerHTML = `
+          <div>
+            <strong style="font-size:14px; color:#D9383A;">STRING REJECTED</strong>
+            <p style="margin-top:2px;">Sequence <code>${candidate || 'ε'}</code> halts in a non-accepting or undefined trap state.</p>
+          </div>
+        `;
+      }
+    } else {
+      resBox.className = 'alert alert-error';
+      resBox.innerHTML = `<strong>Error:</strong> ${res.errorMessage}`;
+    }
 
     Dashboard.refreshStats();
   },

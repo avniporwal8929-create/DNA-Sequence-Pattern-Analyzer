@@ -30,7 +30,7 @@ const SimulatorModule = {
     }
     const info = document.getElementById('sim-automaton-info');
     if (info) {
-      info.textContent = `Loaded DFA for: ${patternName || 'Current Automaton'} (${dfa.states.length} states)`;
+      info.textContent = `Loaded DFA: ${patternName || 'Current Automaton'} (${dfa.states.length} states)`;
     }
   },
 
@@ -61,10 +61,45 @@ const SimulatorModule = {
     document.getElementById('sim-controls-panel').style.display = 'flex';
     document.getElementById('sim-trace-table-container').style.display = 'block';
 
+    // Update final verdict banner
+    const verdictBanner = document.getElementById('sim-final-verdict-banner');
+    if (verdictBanner) {
+      verdictBanner.style.display = 'block';
+      if (res.isAccepted) {
+        verdictBanner.className = 'alert alert-success';
+        verdictBanner.innerHTML = `<strong>FINAL RESULT: ACCEPTED</strong> &mdash; Sequence "<code>${seq}</code>" is accepted by the DFA.`;
+      } else {
+        verdictBanner.className = 'alert alert-error';
+        verdictBanner.innerHTML = `<strong>FINAL RESULT: REJECTED</strong> &mdash; Sequence "<code>${seq}</code>" is rejected by the DFA.`;
+      }
+    }
+
     this.renderTraceTable();
+    this.renderTape(seq, 0);
     this.goToStep(0);
 
     Dashboard.refreshStats();
+  },
+
+  renderTape(seq, activeIdx) {
+    const tapeContainer = document.getElementById('sim-tape-display');
+    if (!tapeContainer) return;
+
+    let html = '<div style="display:flex; gap:6px; align-items:center; overflow-x:auto; padding:6px 0;">';
+    for (let i = 0; i < seq.length; i++) {
+      const isCurrent = (i === activeIdx - 1);
+      html += `
+        <div style="width:34px; height:34px; display:flex; align-items:center; justify-content:center; 
+                    font-family:var(--font-mono); font-weight:700; border-radius:4px; font-size:14px;
+                    border:2px solid ${isCurrent ? '#101713' : 'var(--color-border)'};
+                    background-color:${isCurrent ? 'var(--color-accent-lime)' : '#FFFFFF'};
+                    color:#101713;">
+          ${seq[i]}
+        </div>
+      `;
+    }
+    html += '</div>';
+    tapeContainer.innerHTML = html;
   },
 
   renderTraceTable() {
@@ -80,7 +115,7 @@ const SimulatorModule = {
         <td style="font-size:12px; color:var(--color-text-muted);">${step.transitionDescription}</td>
         <td>
           <span class="card-badge" style="${step.isAccepted ? 'background:#EAF7ED; color:#1E7E34; font-weight:700;' : ''}">
-            ${step.isAccepted ? 'ACCEPT' : 'Non-Accept'}
+            ${step.isAccepted ? 'ACCEPTED' : 'REJECTED / TRAP'}
           </span>
         </td>
       </tr>
@@ -107,7 +142,7 @@ const SimulatorModule = {
     
     const accBadge = document.getElementById('sim-status-badge');
     if (accBadge) {
-      accBadge.textContent = step.isAccepted ? 'ACCEPTED' : 'PENDING / REJECT';
+      accBadge.textContent = step.isAccepted ? 'ACCEPTED' : 'REJECTED';
       accBadge.style.backgroundColor = step.isAccepted ? 'var(--color-accent-lime)' : 'var(--color-workspace)';
       accBadge.style.color = '#101713';
     }
@@ -118,6 +153,11 @@ const SimulatorModule = {
       if (step.nextState !== -1 && step.nextState !== step.currentState) {
         this.visualizer.highlightTransition(step.currentState, step.nextState);
       }
+    }
+
+    const seqInput = document.getElementById('sim-seq-input');
+    if (seqInput) {
+      this.renderTape(seqInput.value.trim(), index);
     }
   },
 
@@ -162,7 +202,7 @@ const SimulatorModule = {
       } else {
         this.stopAutoRun();
       }
-    }, 800);
+    }, 700);
   },
 
   stopAutoRun() {

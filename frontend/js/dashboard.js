@@ -11,10 +11,19 @@ const Dashboard = {
   async refreshStats() {
     const stats = await API.getStats();
     if (stats && stats.totalSequencesAnalyzed !== undefined) {
-      document.getElementById('stat-sequences').textContent = stats.totalSequencesAnalyzed;
-      document.getElementById('stat-patterns').textContent = stats.totalPatternsDetected;
-      document.getElementById('stat-automata').textContent = stats.totalAutomataGenerated;
-      document.getElementById('stat-mutations').textContent = stats.totalMutationsCompared;
+      const elSeqs = document.getElementById('stat-sequences');
+      const elValid = document.getElementById('stat-valid-seqs');
+      const elInvalid = document.getElementById('stat-invalid-seqs');
+      const elPatterns = document.getElementById('stat-patterns');
+      const elMutations = document.getElementById('stat-mutations');
+      const elAutomata = document.getElementById('stat-automata');
+
+      if (elSeqs) elSeqs.textContent = stats.totalSequencesAnalyzed;
+      if (elValid) elValid.textContent = stats.validSequencesCount || 0;
+      if (elInvalid) elInvalid.textContent = stats.invalidSequencesCount || 0;
+      if (elPatterns) elPatterns.textContent = stats.totalPatternsDetected;
+      if (elMutations) elMutations.textContent = stats.totalMutationsIdentified || 0;
+      if (elAutomata) elAutomata.textContent = stats.totalAutomataGenerated || 0;
 
       const historyBody = document.getElementById('dashboard-history-body');
       if (historyBody) {

@@ -56,14 +56,24 @@ const API = {
     return await this.post('/api/dna/validate', { sequence });
   },
 
-  // Automata-Based Pattern Detection
+  // Automata-Based Single Pattern Detection
   async detectPattern(sequence, pattern) {
     return await this.post('/api/pattern/detect', { sequence, pattern });
+  },
+
+  // Automata-Based Multi-Pattern Detection
+  async detectMultiplePatterns(sequence, patterns) {
+    return await this.post('/api/pattern/detect-multi', { sequence, patterns });
   },
 
   // Regex Compilation
   async compileRegex(regex) {
     return await this.post('/api/regex/compile', { regex });
+  },
+
+  // Test String Acceptance by Automaton
+  async testCandidateString(regex, candidate) {
+    return await this.post('/api/automata/test-string', { regex, candidate });
   },
 
   // Generate NFA
