@@ -1,5 +1,6 @@
 /**
- * Main Application Orchestrator
+ * GENOME·AUTOMATA — Main Application Orchestrator
+ * Manages navigation, presets, backend health, and module init.
  */
 
 const App = {
@@ -8,7 +9,6 @@ const App = {
   init() {
     this.setupNavigation();
     this.setupPresets();
-    this.setupTheoryAccordion();
 
     // Initialize all modules
     Dashboard.init();
@@ -17,6 +17,12 @@ const App = {
     AutomataModule.init();
     SimulatorModule.init();
     ComparatorModule.init();
+
+    // Start DNA helix animation
+    if (typeof DNAHelix !== 'undefined') {
+      window._dnaHelix = new DNAHelix('dna-helix-canvas');
+      window._dnaHelix.start();
+    }
 
     // Heartbeat check
     this.checkBackendHealth();
@@ -50,10 +56,10 @@ const App = {
 
     // Update topbar title
     const titleEl = document.getElementById('topbar-title');
-    const descEl = document.getElementById('topbar-desc');
+    const descEl  = document.getElementById('topbar-desc');
     if (activeNav && titleEl && descEl) {
-      titleEl.textContent = activeNav.getAttribute('data-title') || 'DNA Pattern Analyzer';
-      descEl.textContent = activeNav.getAttribute('data-desc') || 'Theory of Computation Academic Laboratory';
+      titleEl.textContent = activeNav.getAttribute('data-title') || 'GENOME·AUTOMATA';
+      descEl.textContent  = activeNav.getAttribute('data-desc')  || 'DNA Sequence Pattern Analyzer & Mutation Detector';
     }
 
     if (tabId === 'tab-dashboard') {
@@ -71,38 +77,38 @@ const App = {
 
       switch (val) {
         case 'insulin':
-          document.getElementById('pattern-seq-input').value = 'ATGCGATGATG';
+          document.getElementById('pattern-seq-input').value    = 'ATGCGATGATG';
           document.getElementById('pattern-target-input').value = 'ATG';
-          document.getElementById('sim-seq-input').value = 'ATGCGATG';
+          document.getElementById('sim-seq-input').value        = 'ATGCGATG';
           document.getElementById('sim-regex-source-input').value = 'ATG';
           this.switchTab('tab-pattern');
           PatternModule.runPatternDetection();
-          this.showToast('Loaded Preset: Insulin Start Codon (ATG)');
+          this.showToast('Preset: Insulin Start Codon (ATG)');
           break;
 
         case 'overlapping':
-          document.getElementById('pattern-seq-input').value = 'ATATAT';
+          document.getElementById('pattern-seq-input').value    = 'ATATAT';
           document.getElementById('pattern-target-input').value = 'ATAT';
           this.switchTab('tab-pattern');
           PatternModule.runPatternDetection();
-          this.showToast('Loaded Preset: Overlapping Pattern (ATAT in ATATAT)');
+          this.showToast('Preset: Overlapping Pattern ATAT in ATATAT');
           break;
 
         case 'tata':
-          document.getElementById('regex-input').value = 'TATAAA';
-          document.getElementById('sim-seq-input').value = 'TATAAA';
-          document.getElementById('sim-regex-source-input').value = 'TATAAA';
+          document.getElementById('regex-input').value           = 'TATAAA';
+          document.getElementById('sim-seq-input').value         = 'TATAAA';
+          document.getElementById('sim-regex-source-input').value= 'TATAAA';
           this.switchTab('tab-automata');
           AutomataModule.runRegexCompilation();
-          this.showToast('Loaded Preset: TATA Box Core Promoter');
+          this.showToast('Preset: TATA Box Core Promoter');
           break;
 
         case 'ecori':
-          document.getElementById('pattern-seq-input').value = 'CCGAATTCGG';
+          document.getElementById('pattern-seq-input').value    = 'CCGAATTCGG';
           document.getElementById('pattern-target-input').value = 'GAATTC';
           this.switchTab('tab-pattern');
           PatternModule.runPatternDetection();
-          this.showToast('Loaded Preset: EcoRI Restriction Site');
+          this.showToast('Preset: EcoRI Restriction Site (GAATTC)');
           break;
 
         case 'sickle':
@@ -110,7 +116,7 @@ const App = {
           document.getElementById('comp-seq2-input').value = 'CCTGTGGAG';
           this.switchTab('tab-comparator');
           ComparatorModule.runComparison();
-          this.showToast('Loaded Preset: Sickle-Cell Single Nucleotide Variant (A -> T)');
+          this.showToast('Preset: Sickle-Cell SNV (A→T)');
           break;
       }
 
@@ -118,52 +124,28 @@ const App = {
     });
   },
 
-  setupTheoryAccordion() {
-    document.querySelectorAll('.theory-header').forEach(header => {
-      header.addEventListener('click', () => {
-        const body = header.nextElementSibling;
-        if (body) {
-          const isHidden = (body.style.display === 'none');
-          body.style.display = isHidden ? 'block' : 'none';
-        }
-      });
-    });
-  },
-
   async checkBackendHealth() {
-    const dot = document.getElementById('engine-status-dot');
+    const dot  = document.getElementById('engine-status-dot');
     const text = document.getElementById('engine-status-text');
 
     const res = await API.checkHealth();
     if (res && res.status === 'ok') {
-      if (dot) {
-        dot.className = 'status-dot';
-      }
-      if (text) {
-        text.textContent = 'C++17 Engine Connected';
-      }
+      if (dot)  dot.className  = 'status-dot';
+      if (text) text.textContent = 'C++17 Engine Connected';
     } else {
-      if (dot) {
-        dot.className = 'status-dot offline';
-      }
-      if (text) {
-        text.textContent = 'Backend Offline';
-      }
+      if (dot)  dot.className  = 'status-dot offline';
+      if (text) text.textContent = 'Backend Offline';
     }
   },
 
   showToast(message) {
     const container = document.getElementById('toast-container');
     if (!container) return;
-
     const toast = document.createElement('div');
     toast.className = 'toast';
     toast.textContent = message;
     container.appendChild(toast);
-
-    setTimeout(() => {
-      toast.remove();
-    }, 3500);
+    setTimeout(() => toast.remove(), 3500);
   }
 };
 

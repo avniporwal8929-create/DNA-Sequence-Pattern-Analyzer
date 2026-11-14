@@ -1,187 +1,107 @@
 /**
  * Automata-Based Pattern Detection Controller
- * Supports single-pattern and multi-pattern searching via C++
+ * Updated for GENOME·AUTOMATA dark biotech UI
  */
 
 const PatternModule = {
-  visualizer: null,
-
   init() {
-    this.visualizer = new AutomataVisualizer('pattern-automata-viz');
+    document.getElementById('detect-btn')?.addEventListener('click', () => this.runPatternDetection());
+    document.getElementById('detect-multi-btn')?.addEventListener('click', () => this.runMultiPatternDetection());
+  },
 
-    const searchBtn = document.getElementById('pattern-search-btn');
-    if (searchBtn) {
-      searchBtn.addEventListener('click', () => this.runPatternDetection());
-    }
+  colorize(seq, mask) {
+    return seq.split('').map((c, i) => {
+      const cls = mask && mask[i] ? 'nt-match' : `nt-${c}`;
+      return `<span class="${cls}">${c}</span>`;
+    }).join('');
+  },
 
-    const multiBtn = document.getElementById('pattern-multi-search-btn');
-    if (multiBtn) {
-      multiBtn.addEventListener('click', () => this.runMultiPatternDetection());
-    }
+  buildResultCard(res, isSingle) {
+    const found = isSingle ? res.patternFound : res.totalOccurrencesCombined > 0;
+    const count = isSingle ? res.totalOccurrences : res.totalOccurrencesCombined;
+    const occurrences = isSingle ? (res.occurrences || []) : this._flattenOccurrences(res);
 
-    // Quick nucleotide insertion for pattern
-    document.querySelectorAll('.nuc-pat-insert').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const char = e.target.getAttribute('data-nuc');
-        const input = document.getElementById('pattern-target-input');
-        if (input) {
-          input.value += char;
-          input.focus();
-        }
-      });
-    });
+    return `
+      <div class="result-box ${found ? 'success' : 'error'}" style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <span style="font-size:13px;font-weight:800;color:var(--${found ? 'emerald' : 'danger'});">
+            ${found ? '✓ Pattern Found' : '✗ Pattern Not Found'}
+          </span>
+          <span class="card-badge ${found ? 'emerald' : 'danger'}">${count} occurrence${count !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Occurrences</span>
+          <span class="info-value">${count}</span>
+        </div>
+        <div class="info-row" style="border-bottom:none;">
+          <span class="info-label">Positions</span>
+          <span class="info-value text-mono" style="word-break:break-all;">
+            ${occurrences.length > 0 ? occurrences.map(o => `[${o.startIndex}…${o.endIndex}]`).join('  ') : '—'}
+          </span>
+        </div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>#</th><th>Start</th><th>End</th><th>Match</th></tr>
+        </thead>
+        <tbody>
+          ${occurrences.length === 0
+            ? `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px;">No matches found.</td></tr>`
+            : occurrences.map((o, idx) => `
+              <tr>
+                <td class="text-muted">${idx + 1}</td>
+                <td><strong>${o.startIndex}</strong></td>
+                <td>${o.endIndex}</td>
+                <td><span class="text-mono" style="color:var(--cyan);font-weight:700;">${o.matchedText}</span></td>
+              </tr>`).join('')}
+        </tbody>
+      </table>
+    `;
+  },
+
+  _flattenOccurrences(res) {
+    const all = [];
+    (res.patternResults || []).forEach(pr => (pr.occurrences || []).forEach(o => all.push(o)));
+    return all;
   },
 
   async runPatternDetection() {
-    const seqInput = document.getElementById('pattern-seq-input');
-    const patInput = document.getElementById('pattern-target-input');
-    const resultsCard = document.getElementById('pattern-results-card');
+    const seq     = document.getElementById('pattern-seq-input')?.value.trim() || '';
+    const pattern = document.getElementById('pattern-target-input')?.value.trim() || '';
+    const result  = document.getElementById('pattern-result');
+    const display = document.getElementById('pattern-seq-display');
 
-    const sequence = seqInput ? seqInput.value.trim() : '';
-    const pattern = patInput ? patInput.value.trim() : '';
+    if (!seq || !pattern) { App.showToast('Enter both sequence and pattern.'); return; }
+    if (pattern.includes(',')) return this.runMultiPatternDetection();
 
-    if (!sequence || !pattern) {
-      App.showToast('Please provide both a DNA sequence and a target pattern.');
-      return;
-    }
+    if (result) result.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);font-size:12px;"><div class="spinner"></div> Detecting pattern…</div>`;
 
-    // Check if user entered comma-separated multiple patterns
-    if (pattern.includes(',')) {
-      return this.runMultiPatternDetection();
-    }
+    const res = await API.detectPattern(seq, pattern);
+    if (!res.success) { App.showToast(res.errorMessage || 'Detection failed'); return; }
 
-    const res = await API.detectPattern(sequence, pattern);
-    if (!res.success) {
-      App.showToast(res.errorMessage || 'Pattern detection failed');
-      return;
-    }
-
-    if (resultsCard) resultsCard.style.display = 'block';
-
-    // Summary metrics
-    document.getElementById('pat-res-found').textContent = res.patternFound ? 'Yes' : 'No';
-    document.getElementById('pat-res-found').style.color = res.patternFound ? '#1E7E34' : '#D9383A';
-    document.getElementById('pat-res-count').textContent = res.totalOccurrences;
-    document.getElementById('pat-res-positions').textContent = res.startingPositions.length > 0 
-      ? res.startingPositions.join(', ') 
-      : 'None';
-
-    // Highlighted visual sequence rendering
-    const hlContainer = document.getElementById('pattern-highlighted-view');
-    if (hlContainer && res.dnaSequence) {
-      let html = '';
-      const mask = res.matchMask || [];
-      for (let i = 0; i < res.dnaSequence.length; i++) {
-        const char = res.dnaSequence[i];
-        if (mask[i]) {
-          html += `<span class="match-hl">${char}</span>`;
-        } else {
-          html += char;
-        }
-      }
-      hlContainer.innerHTML = html;
-    }
-
-    // Occurrences Table
-    const tableBody = document.getElementById('pattern-occurrences-body');
-    if (tableBody) {
-      if (res.occurrences.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--color-text-muted);">Pattern not found in sequence.</td></tr>`;
-      } else {
-        tableBody.innerHTML = res.occurrences.map(o => `
-          <tr>
-            <td>#${o.matchNumber}</td>
-            <td><strong>Position ${o.startIndex}</strong></td>
-            <td>Position ${o.endIndex}</td>
-            <td><span class="match-hl mono-text">${o.matchedText}</span></td>
-          </tr>
-        `).join('');
-      }
-    }
-
-    // Render Pattern Matcher DFA
-    if (res.matcherDFA && this.visualizer) {
-      this.visualizer.render(res.matcherDFA, `DFA for Pattern: "${res.pattern}"`);
-    }
+    if (result) result.innerHTML = this.buildResultCard(res, true);
+    if (display) display.innerHTML = this.colorize(res.dnaSequence || seq, res.matchMask);
 
     Dashboard.refreshStats();
   },
 
   async runMultiPatternDetection() {
-    const seqInput = document.getElementById('pattern-seq-input');
-    const patInput = document.getElementById('pattern-target-input');
-    const resultsCard = document.getElementById('pattern-results-card');
+    const seq       = document.getElementById('pattern-seq-input')?.value.trim() || '';
+    const rawPat    = document.getElementById('pattern-multi-input')?.value.trim()
+                   || document.getElementById('pattern-target-input')?.value.trim() || '';
+    const result    = document.getElementById('pattern-result');
+    const display   = document.getElementById('pattern-seq-display');
 
-    const sequence = seqInput ? seqInput.value.trim() : '';
-    const rawPattern = patInput ? patInput.value.trim() : '';
+    const patterns  = rawPat.split(/[,;\s]+/).filter(p => p.length > 0);
+    if (!seq || patterns.length === 0) { App.showToast('Enter sequence and comma-separated patterns.'); return; }
 
-    if (!sequence || !rawPattern) {
-      App.showToast('Please provide both a DNA sequence and target patterns.');
-      return;
-    }
+    if (result) result.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);font-size:12px;"><div class="spinner"></div> Scanning ${patterns.length} patterns…</div>`;
 
-    const patterns = rawPattern.split(/[,;\s]+/).filter(p => p.length > 0);
-    if (patterns.length === 0) return;
+    const res = await API.detectMultiplePatterns(seq, patterns);
+    if (!res.success) { App.showToast(res.errorMessage || 'Multi-pattern detection failed'); return; }
 
-    const res = await API.detectMultiplePatterns(sequence, patterns);
-    if (!res.success) {
-      App.showToast(res.errorMessage || 'Multi-pattern detection failed');
-      return;
-    }
-
-    if (resultsCard) resultsCard.style.display = 'block';
-
-    document.getElementById('pat-res-found').textContent = res.totalOccurrencesCombined > 0 ? 'Yes' : 'No';
-    document.getElementById('pat-res-found').style.color = res.totalOccurrencesCombined > 0 ? '#1E7E34' : '#D9383A';
-    document.getElementById('pat-res-count').textContent = `${res.totalOccurrencesCombined} (across ${patterns.length} patterns)`;
-    
-    // Collect starting positions
-    const allPositions = [];
-    const allOccurrences = [];
-    res.patternResults.forEach(pr => {
-      pr.startingPositions.forEach(p => allPositions.push(`${p} (${pr.pattern})`));
-      pr.occurrences.forEach(o => allOccurrences.push(o));
-    });
-
-    document.getElementById('pat-res-positions').textContent = allPositions.length > 0 ? allPositions.join(', ') : 'None';
-
-    // Highlighted visual sequence rendering
-    const hlContainer = document.getElementById('pattern-highlighted-view');
-    if (hlContainer && res.dnaSequence) {
-      let html = '';
-      const mask = res.combinedMatchMask || [];
-      for (let i = 0; i < res.dnaSequence.length; i++) {
-        const char = res.dnaSequence[i];
-        if (mask[i]) {
-          html += `<span class="match-hl">${char}</span>`;
-        } else {
-          html += char;
-        }
-      }
-      hlContainer.innerHTML = html;
-    }
-
-    // Occurrences Table
-    const tableBody = document.getElementById('pattern-occurrences-body');
-    if (tableBody) {
-      if (allOccurrences.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--color-text-muted);">No patterns found in sequence.</td></tr>`;
-      } else {
-        tableBody.innerHTML = allOccurrences.map((o, idx) => `
-          <tr>
-            <td>#${idx + 1}</td>
-            <td><strong>Position ${o.startIndex}</strong></td>
-            <td>Position ${o.endIndex}</td>
-            <td><span class="match-hl mono-text">${o.matchedText}</span> <span style="font-size:11px; color:#556B5F;">[${o.patternTag || ''}]</span></td>
-          </tr>
-        `).join('');
-      }
-    }
-
-    // Render first pattern's DFA in visualizer
-    if (res.patternResults.length > 0 && res.patternResults[0].matcherDFA && this.visualizer) {
-      this.visualizer.render(res.patternResults[0].matcherDFA, `DFA for Pattern: "${res.patternResults[0].pattern}"`);
-    }
+    if (result) result.innerHTML = this.buildResultCard(res, false);
+    if (display) display.innerHTML = this.colorize(res.dnaSequence || seq, res.combinedMatchMask);
 
     Dashboard.refreshStats();
   }

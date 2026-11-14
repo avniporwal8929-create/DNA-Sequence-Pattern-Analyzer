@@ -1,91 +1,137 @@
 /**
  * DNA Sequence Comparator & Mutation Detection Controller
+ * Updated for GENOME·AUTOMATA dark biotech UI
  */
 
 const ComparatorModule = {
   init() {
-    const compareBtn = document.getElementById('comparator-run-btn');
-    if (compareBtn) {
-      compareBtn.addEventListener('click', () => this.runComparison());
-    }
+    document.getElementById('compare-btn')?.addEventListener('click', () => this.runComparison());
+  },
 
-    const swapBtn = document.getElementById('comparator-swap-btn');
-    if (swapBtn) {
-      swapBtn.addEventListener('click', () => {
-        const s1 = document.getElementById('comp-seq1-input');
-        const s2 = document.getElementById('comp-seq2-input');
-        if (s1 && s2) {
-          const temp = s1.value;
-          s1.value = s2.value;
-          s2.value = temp;
-        }
-      });
-    }
+  colorizeAlignment(seq, symbols) {
+    // Build colored alignment view
+    return seq.split('').map((c, i) => {
+      const sym = symbols[i] || ' ';
+      if (sym === '|') return `<span class="mut-match">${c}</span>`;
+      if (sym === 'X') return `<span class="mut-sub">${c}</span>`;
+      if (sym === '+') return `<span class="mut-ins">${c}</span>`;
+      if (sym === '-') return `<span class="mut-del">${c}</span>`;
+      return `<span class="mut-match">${c}</span>`;
+    }).join('');
   },
 
   async runComparison() {
-    const s1Input = document.getElementById('comp-seq1-input');
-    const s2Input = document.getElementById('comp-seq2-input');
-    const resultsContainer = document.getElementById('comparator-results-container');
+    const seq1 = document.getElementById('comp-seq1-input')?.value.trim() || '';
+    const seq2 = document.getElementById('comp-seq2-input')?.value.trim() || '';
+    const container = document.getElementById('comparator-result');
 
-    const seq1 = s1Input ? s1Input.value.trim() : '';
-    const seq2 = s2Input ? s2Input.value.trim() : '';
+    if (!seq1 || !seq2) { App.showToast('Please provide both reference and query sequences.'); return; }
 
-    if (!seq1 || !seq2) {
-      App.showToast('Please provide both Sequence 1 and Sequence 2 for comparison.');
-      return;
-    }
+    if (container) container.innerHTML = `
+      <div class="card">
+        <div class="card-body" style="display:flex;align-items:center;gap:10px;color:var(--text-muted);">
+          <div class="spinner"></div> Running Needleman-Wunsch alignment…
+        </div>
+      </div>`;
 
     const res = await API.compareSequences(seq1, seq2);
-
     if (!res.success) {
       App.showToast(res.errorMessage || 'Comparison failed');
       return;
     }
 
-    if (resultsContainer) resultsContainer.style.display = 'block';
+    const hasDiffs = res.differenceFound;
+    const sim = (res.similarityPercentage || 0).toFixed(1);
 
-    // Summary Metrics
-    document.getElementById('comp-res-similarity').textContent = `${res.similarityPercentage.toFixed(1)}%`;
-    document.getElementById('comp-res-diff-status').textContent = res.differenceFound ? 'Differences Detected' : 'Identical Sequences';
-    document.getElementById('comp-res-diff-status').style.color = res.differenceFound ? '#D9383A' : '#1E7E34';
+    // Build result HTML
+    const symArr = (res.matchSymbols || '').split('');
 
-    document.getElementById('comp-res-matches').textContent = res.totalMatches;
-    document.getElementById('comp-res-subs').textContent = res.totalSubstitutions;
-    document.getElementById('comp-res-ins').textContent = res.totalInsertions;
-    document.getElementById('comp-res-dels').textContent = res.totalDeletions;
+    const diffRows = (res.differences || []).map((d, idx) => {
+      const typeColor = d.type === 'Substitution' ? 'amber' : d.type === 'Insertion' ? 'emerald' : 'danger';
+      return `
+        <tr>
+          <td class="text-muted">${idx + 1}</td>
+          <td><strong>${d.alignmentPosition}</strong></td>
+          <td class="text-mono">${d.seq1Pos !== undefined ? d.seq1Pos : '—'}</td>
+          <td class="text-mono">${d.seq2Pos !== undefined ? d.seq2Pos : '—'}</td>
+          <td class="text-mono text-${typeColor}">'${d.char1}' → '${d.char2}'</td>
+          <td><span class="card-badge ${typeColor}">${d.type}</span></td>
+          <td class="text-muted text-xs">${d.explanation || ''}</td>
+        </tr>`;
+    }).join('');
 
-    // Visual Alignment Banner
-    const banner = document.getElementById('comp-alignment-banner');
-    if (banner) {
-      banner.innerHTML = `Seq1 (Ref):   ${res.alignedSeq1}\nAlignment:    ${res.matchSymbols}\nSeq2 (Mut):   ${res.alignedSeq2}`;
-    }
+    container.innerHTML = `
+      <!-- Summary Metrics -->
+      <div class="grid-4 section-gap" style="grid-template-columns:repeat(4,1fr);">
+        <div class="metric-card ${hasDiffs ? 'danger' : 'emerald'}">
+          <div class="metric-label">Similarity</div>
+          <div class="metric-value ${hasDiffs ? 'danger' : 'emerald'}">${sim}%</div>
+          <div class="metric-sub">${hasDiffs ? 'Differences detected' : 'Identical sequences'}</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Matches</div>
+          <div class="metric-value cyan">${res.totalMatches || 0}</div>
+          <div class="metric-sub">Identical positions</div>
+        </div>
+        <div class="metric-card amber">
+          <div class="metric-label">Substitutions</div>
+          <div class="metric-value amber">${res.totalSubstitutions || 0}</div>
+          <div class="metric-sub">SNV / point mutations</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Indels</div>
+          <div class="metric-value purple">${(res.totalInsertions || 0) + (res.totalDeletions || 0)}</div>
+          <div class="metric-sub">Ins: ${res.totalInsertions || 0} · Del: ${res.totalDeletions || 0}</div>
+        </div>
+      </div>
 
-    // Differences Table
-    const diffBody = document.getElementById('comp-diff-body');
-    if (diffBody) {
-      if (!res.differences || res.differences.length === 0) {
-        diffBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#1E7E34; font-weight:600;">No mutations or sequence differences found. Sequences are 100% identical.</td></tr>`;
-      } else {
-        diffBody.innerHTML = res.differences.map(d => {
-          let badgeClass = 'diff-sub';
-          if (d.type === 'Insertion') badgeClass = 'diff-ins';
-          if (d.type === 'Deletion') badgeClass = 'diff-del';
+      <!-- Alignment View -->
+      <div class="card section-gap">
+        <div class="card-header">
+          <span class="card-title"><span class="card-title-icon">⇌</span> Global Alignment (Needleman-Wunsch)</span>
+          <span class="card-badge ${hasDiffs ? 'danger' : 'emerald'}">${hasDiffs ? 'Mutations Found' : 'Identical'}</span>
+        </div>
+        <div class="card-body">
+          <div class="compare-lanes">
+            <div class="compare-lane">
+              <div class="compare-lane-header">Reference (Seq 1)</div>
+              <div class="mutation-track">${this.colorizeAlignment(res.alignedSeq1 || seq1, symArr)}</div>
+            </div>
+            <div class="compare-lane">
+              <div class="compare-lane-header">Mutant (Seq 2)</div>
+              <div class="mutation-track">${this.colorizeAlignment(res.alignedSeq2 || seq2, symArr)}</div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding:10px 14px;background:var(--bg);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);">
+            <span class="form-label" style="display:block;margin-bottom:6px;">Alignment Symbols</span>
+            <code style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);letter-spacing:0.14em;">${res.matchSymbols || ''}</code>
+            <div style="margin-top:8px;display:flex;gap:14px;flex-wrap:wrap;">
+              <span class="text-xs"><span class="mut-match">|</span> Match</span>
+              <span class="text-xs"><span class="mut-sub">X</span> Substitution</span>
+              <span class="text-xs"><span class="mut-ins">+</span> Insertion</span>
+              <span class="text-xs"><span class="mut-del">-</span> Deletion</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          return `
-            <tr>
-              <td><strong>Col #${d.alignmentPosition}</strong></td>
-              <td>${d.seq1Pos}</td>
-              <td>${d.seq2Pos}</td>
-              <td><span class="mono-text" style="font-weight:700;">'${d.char1}'</span></td>
-              <td><span class="mono-text" style="font-weight:700;">'${d.char2}'</span></td>
-              <td><span class="${badgeClass}">${d.type}</span></td>
-              <td style="font-size:12px; color:var(--color-text-muted);">${d.explanation}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-    }
+      <!-- Differences Table -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title"><span class="card-title-icon">≡</span> Mutation Sites</span>
+          <span class="card-badge ${hasDiffs ? 'danger' : 'emerald'}">${(res.differences || []).length} site${(res.differences || []).length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="card-body" style="padding:0;overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr><th>#</th><th>Align Pos</th><th>Seq1 Pos</th><th>Seq2 Pos</th><th>Change</th><th>Type</th><th>Note</th></tr>
+            </thead>
+            <tbody>
+              ${diffRows || `<tr><td colspan="7" style="text-align:center;color:var(--emerald);padding:20px;font-weight:600;">No mutations detected — sequences are identical.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
 
     Dashboard.refreshStats();
   }

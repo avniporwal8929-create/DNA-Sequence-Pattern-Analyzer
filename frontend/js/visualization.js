@@ -47,10 +47,10 @@ class AutomataVisualizer {
         <svg class="automata-svg" id="${this.container.id}-svg" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <marker id="arrow-normal" viewBox="0 0 10 10" refX="24" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#48594F" />
+              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#26384A" />
             </marker>
             <marker id="arrow-active" viewBox="0 0 10 10" refX="24" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#D9383A" />
+              <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#38C8F4" />
             </marker>
           </defs>
           <g id="${this.container.id}-viewport"></g>
@@ -203,8 +203,8 @@ class AutomataVisualizer {
       svgContent += `
         <g class="svg-initial-arrow">
           <path d="M ${arrowStartX} ${arrowStartY} L ${startPos.x - this.options.nodeRadius} ${arrowStartY}" 
-                stroke="#17211B" stroke-width="2.2" marker-end="url(#arrow-normal)" />
-          <text x="${arrowStartX - 8}" y="${arrowStartY + 4}" font-family="var(--font-mono)" font-size="11" font-weight="700" fill="#17211B" text-anchor="end">START</text>
+                stroke="#38C8F4" stroke-width="2.2" marker-end="url(#arrow-normal)" />
+          <text x="${arrowStartX - 8}" y="${arrowStartY + 4}" font-family="var(--font-mono)" font-size="11" font-weight="700" fill="#38C8F4" text-anchor="end">START</text>
         </g>
       `;
     }
