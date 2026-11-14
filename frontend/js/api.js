@@ -3,11 +3,31 @@
  * Communicates strictly via JSON with dna_server.exe
  */
 
-const API_BASE_URL = window.location.origin.includes('http') 
-  ? window.location.origin 
-  : 'http://localhost:8080';
+const getApiBaseUrl = () => {
+  const custom = localStorage.getItem('GENOME_API_URL');
+  if (custom) return custom.replace(/\/+$/, '');
+
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return window.location.port === '8080' ? window.location.origin : 'http://localhost:8080';
+  }
+  return window.location.origin;
+};
+
+let API_BASE_URL = getApiBaseUrl();
 
 const API = {
+  setBaseUrl(url) {
+    if (url) {
+      localStorage.setItem('GENOME_API_URL', url.replace(/\/+$/, ''));
+    } else {
+      localStorage.removeItem('GENOME_API_URL');
+    }
+    API_BASE_URL = getApiBaseUrl();
+  },
+
+  getBaseUrl() {
+    return API_BASE_URL;
+  },
   // Generic helper for JSON POST requests
   async post(endpoint, data) {
     try {

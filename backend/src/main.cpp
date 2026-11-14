@@ -70,7 +70,13 @@ void setCors(httplib::Response& res) {
 
 int main(int argc, char* argv[]) {
     int port = 8080;
-    if (argc > 1) {
+    if (const char* envPort = std::getenv("PORT")) {
+        try {
+            port = std::stoi(envPort);
+        } catch (...) {
+            port = 8080;
+        }
+    } else if (argc > 1) {
         port = std::stoi(argv[1]);
     }
 
