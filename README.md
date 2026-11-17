@@ -71,15 +71,6 @@ This is an application-based engineering project demonstrating the direct, pract
 - Visual alignment banner (`Seq1`, match bar `|`, substitution `*`, indel `+`/`-`, `Seq2`).
 - Mutation summary metrics and genomic description table.
 
-### Secondary Reference — TOC & Viva Guide
-- Concise secondary reference at the bottom covering:
-  - Formal definitions ($\Sigma, \Sigma^*$, String, Language, NFA, DFA, $\epsilon$-transitions, $\epsilon$-closure).
-  - Project-specific TOC implementation rationale (Why DFAs guarantee linear $O(N)$ matching).
-  - Time and space complexity table.
-  - Likely viva voce questions and answers about the actual project implementation.
-
----
-
 ## 3. Technology Stack
 
 - **Backend / Core Engine:** C++17
